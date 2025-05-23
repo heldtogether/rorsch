@@ -8,7 +8,7 @@
 
 ## ✨ Features
 
-- 🔄 Watch any file pattern using `**/*.go` globs
+- 🔄 Watch any file pattern using `**/*.{ext}` globs
 - 🚦 See command status live: ✅ pass, ❌ fail, ⏳ running
 - 📜 View streaming output per command
 - 🧵 Written in Go with a responsive TUI using Bubble Tea
@@ -105,7 +105,7 @@ Just drop this in `rorsch.yml` and go 🚀
 ### 🛠 Setup for development
 
 ```
-git clone https://github.com/yourusername/rorsch
+git clone https://github.com/heldtogether/rorsch
 cd rorsch
 go mod tidy
 go run ./cmd/rorsch
