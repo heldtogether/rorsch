@@ -69,7 +69,9 @@ func (cw *CommandWatcher) addWatchedFiles() {
 	var basepath string
 	var pattern string
 	basepath, pattern = doublestar.SplitPattern(cw.command.Glob)
+
 	fsys := os.DirFS(basepath)
+
 	files, err := doublestar.Glob(fsys, pattern)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
@@ -77,7 +79,8 @@ func (cw *CommandWatcher) addWatchedFiles() {
 	}
 
 	for _, file := range files {
-		dir := filepath.Dir(file)
+		abs := filepath.Join(basepath, file)
+		dir := filepath.Dir(abs)
 
 		if cw.watchedDirs[dir] {
 			continue

@@ -46,11 +46,9 @@ func (e *Execer) Start() {
 	r := io.MultiReader(stdout, stderr)
 	scanner := bufio.NewScanner(r)
 
-	//go func() {
 	for scanner.Scan() {
 		e.Callback(e.Command, scanner.Text(), nil, false)
 	}
 	err = cmd.Wait()
 	e.Callback(e.Command, "", err, true)
-	//}()
 }
