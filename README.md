@@ -4,7 +4,7 @@
 
 > It’s like `entr`, `watchexec`, or `nodemon`, but with a brain 🧠 and a soul.
 
-![Animated gif showing a demo of Rorsch in action](./docs/demo.gif)
+![Animated gif showing a demo of Rorsch in action](./docs/readme-demo.gif)
 
 ---
 
