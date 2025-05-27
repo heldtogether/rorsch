@@ -24,7 +24,8 @@
 ### ✅ Install
 
 ```
-go install github.com/heldtogether/rorsch@latest
+brew tap heldtogether/tools
+brew install rorsch
 ```
 
 Or clone and build:
@@ -34,6 +35,8 @@ git clone https://github.com/heldtogether/rorsch
 cd rorsch
 go build -o rorsch ./cmd/rorsch
 ```
+
+Or download from https://github.com/heldtogether/rorsch/releases/. 
 
 ---
 
