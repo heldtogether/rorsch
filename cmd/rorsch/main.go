@@ -23,7 +23,7 @@ type model struct {
 	height   int
 }
 
-const Version = "1.0.0"
+var Version = "dev"
 
 func main() {
 	var configPath string
@@ -36,7 +36,7 @@ func main() {
 	flag.Parse()
 
 	if showVersion {
-		fmt.Printf("rorsch: v%s\n", Version)
+		fmt.Printf("rorsch: %s\n", Version)
 		os.Exit(0)
 	}
 
