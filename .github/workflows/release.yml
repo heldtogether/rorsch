@@ -40,9 +40,10 @@ jobs:
           tar -czf dist/${NAME}-${VERSION}-darwin-amd64.tar.gz ${NAME}
           rm ${NAME}
 
-          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.Version=${VERSION}" -o ${NAME}.exe ./cmd/rorsch
-          zip -j dist/${NAME}-${VERSION}-windows-amd64.zip ${NAME}.exe
-          rm ${NAME}.exe
+          # Don't support Windows for now, it has different syscalls
+          # GOOS=windows GOARCH=amd64 go build -ldflags "-X main.Version=${VERSION}" -o ${NAME}.exe ./cmd/rorsch
+          # zip -j dist/${NAME}-${VERSION}-windows-amd64.zip ${NAME}.exe
+          # rm ${NAME}.exe
 
       - name: Generate checksums
         run: |
