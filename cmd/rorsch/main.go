@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"log/slog"
 	"os"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -21,11 +23,25 @@ type model struct {
 	height   int
 }
 
-func main() {
+const Version = "1.0.0"
 
+func main() {
 	var configPath string
+	var showVersion bool
+	var logLevel string
+
 	flag.StringVar(&configPath, "c", "rorsch.yml", "Path to config file")
+	flag.BoolVar(&showVersion, "version", false, "Print the version and exit")
+	flag.StringVar(&logLevel, "log", "", "Set log level (debug, info, warn, error)")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("rorsch: v%s\n", Version)
+		os.Exit(0)
+	}
+
+	logFile := configureLogging(logLevel, configPath)
+	defer logFile.Close()
 
 	config := internal.LoadConfig(configPath)
 	m := initialModel(config)
@@ -34,6 +50,7 @@ func main() {
 
 	for _, command := range m.commands {
 		onCmdOutput := func(c *internal.Command, line string, err error, done bool) {
+			slog.Info(fmt.Sprintf("received callback from %s", c.Name), "output", line, "done", done, "error", err)
 			p.Send(internal.CommandStreamMsg{
 				Command: c,
 				Line:    line,
@@ -56,6 +73,8 @@ func main() {
 
 		e := internal.NewExecer(command, onCmdOutput)
 		go e.Start()
+
+		defer e.Stop()
 	}
 
 	if _, err := p.Run(); err != nil {
@@ -151,4 +170,45 @@ func (m model) View() string {
 	s += RenderMenu(&m)
 
 	return s
+}
+
+func configureLogging(logLevel string, configPath string) *os.File {
+	var level *slog.Level
+	switch logLevel {
+	case "debug":
+		lvl := slog.LevelDebug
+		level = &lvl
+	case "info":
+		lvl := slog.LevelInfo
+		level = &lvl
+	case "warn":
+		lvl := slog.LevelWarn
+		level = &lvl
+	case "error":
+		lvl := slog.LevelError
+		level = &lvl
+	default:
+		// logging not requested
+	}
+
+	if level == nil {
+		slog.SetDefault(slog.New(internal.DiscardHandler{}))
+		return nil
+	}
+
+	// Set up slog
+	logFile, err := os.OpenFile(".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+
+	handler := slog.NewTextHandler(logFile, &slog.HandlerOptions{
+		Level: *level,
+	})
+	slog.SetDefault(slog.New(handler))
+
+	slog.Info("Starting rorsch", "version", Version)
+	slog.Debug("Using config file", "path", configPath)
+	
+	return logFile
 }
