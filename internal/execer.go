@@ -7,8 +7,9 @@ import (
 	"log/slog"
 	"os/exec"
 	"strings"
-	"sync"
 	"syscall"
+
+	"github.com/creack/pty"
 )
 
 type ExecerCallback func(c *Command, line string, err error, done bool)
@@ -16,9 +17,6 @@ type ExecerCallback func(c *Command, line string, err error, done bool)
 type Execer struct {
 	Command  *Command
 	Callback ExecerCallback
-
-	mu   sync.Mutex
-	proc *exec.Cmd
 }
 
 func NewExecer(c *Command, cb ExecerCallback) *Execer {
@@ -34,64 +32,50 @@ func (e *Execer) Start() {
 	parts := strings.Fields(e.Command.Exec)
 	cmd := exec.Command(parts[0], parts[1:]...)
 	cmd.Dir = e.Command.Cwd
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
 
-	stdout, err := cmd.StdoutPipe()
+	ptmx, err := pty.Start(cmd)
 	if err != nil {
-		e.Callback(e.Command, "", err, true)
-		return
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		e.Callback(e.Command, "", err, true)
-		return
-	}
-
-	if err := cmd.Start(); err != nil {
 		e.Callback(e.Command, "", err, true)
 		return
 	}
 
 	slog.Info("Starting command", "cmd", strings.Join(cmd.Args, " "), "PID", cmd.Process.Pid)
 
-	e.mu.Lock()
-	e.proc = cmd
-	e.mu.Unlock()
+	e.Command.mu.Lock()
+	e.Command.proc = cmd
+	e.Command.mu.Unlock()
 
 	go func() {
-		r := io.MultiReader(stdout, stderr)
+		r := io.MultiReader(ptmx)
 		scanner := bufio.NewScanner(r)
 
 		for scanner.Scan() {
-			e.mu.Lock()
+			e.Command.mu.Lock()
 			e.Callback(e.Command, fmt.Sprintf("%s", scanner.Text()), nil, false)
-			e.mu.Unlock()
+			e.Command.mu.Unlock()
 		}
 	}()
 	err = cmd.Wait()
-	e.mu.Lock()
+	e.Command.mu.Lock()
 	e.Callback(e.Command, "", err, true)
-	e.mu.Unlock()
+	e.Command.mu.Unlock()
 }
 
 func (e *Execer) Stop() error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.Command.mu.Lock()
+	defer e.Command.mu.Unlock()
 
-	if e.proc != nil && e.proc.Process != nil {
-		slog.Debug("killing proc", "PID", e.proc.Process.Pid)
-		pgid, err := syscall.Getpgid(e.proc.Process.Pid)
+	if e.Command.proc != nil && e.Command.proc.Process != nil {
+		slog.Debug("killing proc", "PID", e.Command.proc.Process.Pid)
+		pgid, err := syscall.Getpgid(e.Command.proc.Process.Pid)
 		if err == nil {
 			err = syscall.Kill(-pgid, syscall.SIGKILL)
-			slog.Debug("killed process group", "PID", e.proc.Process.Pid, "error", err)
+			slog.Debug("killed process group", "PID", e.Command.proc.Process.Pid, "error", err)
 		} else {
-			err = e.proc.Process.Kill()
-			slog.Debug("killed process", "PID", e.proc.Process.Pid, "error", err)
+			err = e.Command.proc.Process.Kill()
+			slog.Debug("killed process", "PID", e.Command.proc.Process.Pid, "error", err)
 		}
-		e.proc = nil
+		e.Command.proc = nil
 		return err
 	}
 

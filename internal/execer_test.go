@@ -79,9 +79,9 @@ func TestExecerStopsOldProcessBeforeStart(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Check that the process is running
-	execer.mu.Lock()
-	firstProc := execer.proc
-	execer.mu.Unlock()
+	cmd.mu.Lock()
+	firstProc := cmd.proc
+	cmd.mu.Unlock()
 
 	if firstProc == nil || firstProc.Process == nil {
 		t.Fatal("expected first process to be started")
@@ -93,9 +93,9 @@ func TestExecerStopsOldProcessBeforeStart(t *testing.T) {
 	// Wait for the stop to take effect
 	time.Sleep(100 * time.Millisecond)
 
-	execer.mu.Lock()
-	secondProc := execer.proc
-	execer.mu.Unlock()
+	cmd.mu.Lock()
+	secondProc := cmd.proc
+	cmd.mu.Unlock()
 
 	if secondProc == nil || secondProc.Process == nil {
 		t.Fatal("expected second process to be started")

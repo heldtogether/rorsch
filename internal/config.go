@@ -3,6 +3,8 @@ package internal
 import (
 	"log"
 	"os"
+	"os/exec"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -27,6 +29,9 @@ type Command struct {
 
 	LogTail string
 	Status  CommandStatus
+
+	proc *exec.Cmd
+	mu   sync.Mutex
 }
 
 func LoadConfig(configPath string) []*Command {
