@@ -3,3 +3,7 @@ commands:
     exec: "go test -v -count=1 ./..."
     glob: "./**/*.go"
     cwd: "."
+  - name: "Logs"
+    exec: "cat .log"
+    glob: "nfjdsnfudisnbufndiufndiusnuidfs"
+    cwd: "."

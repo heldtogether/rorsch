@@ -63,7 +63,7 @@ func RenderTable(m *model) string {
 }
 
 func RenderMenu(m *model) string {
-	var style = lipgloss.NewStyle().
+	style := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#FAFAFA")).
 		Background(lipgloss.Color("#7D56F4")).
@@ -71,7 +71,7 @@ func RenderMenu(m *model) string {
 		PaddingLeft(1).
 		Width(m.width)
 
-	return "\n" + style.Render(fmt.Sprintf("Press q to quit")) + "\n"
+	return "\n" + style.Render("q quit\th/<- scroll left\tl/-> scroll right\tj/k scroll up/down\tup/down change command") + "\n"
 }
 
 func tableHeight(m *model) int {

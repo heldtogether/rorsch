@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -99,31 +100,66 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		slog.Debug(fmt.Sprintf("Key pressed: %q\n", msg.String()))
 		switch msg.String() {
 		case "ctrl+c", "q":
+			slog.Debug("Quitting…")
 			return m, tea.Quit
-		case "up", "k":
+		case "up":
+			slog.Debug("Arrow up -> move cursor")
 			if m.cursor > 0 {
 				m.cursor--
+				m.viewport.SetContent(m.commands[m.cursor].LogTail)
 			}
-		case "down", "j":
+			// IMPORTANT: don't forward this msg to viewport
+			return m, tea.Batch(cmds...)
+		case "down":
+			slog.Debug("Arrow down -> move cursor")
 			if m.cursor < len(m.commands)-1 {
 				m.cursor++
+				m.viewport.SetContent(m.commands[m.cursor].LogTail)
 			}
+			// IMPORTANT: don't forward this msg to viewport
+			return m, tea.Batch(cmds...)
+		default:
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
 		}
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.viewport = viewport.New(msg.Width-4, msg.Height/2)
-		m.viewport.SetContent(m.commands[m.cursor].LogTail)
+		m.width, m.height = msg.Width, msg.Height
+
+		availableHeight := m.height - layoutOverhead(&m)
+		if availableHeight < 5 {
+			availableHeight = 5
+		}
+
+		old := m.viewport
+		m.viewport = viewport.New(m.width-2, availableHeight)
 		m.viewport.Style = lipgloss.NewStyle().
-			MarginLeft(2).
+			MarginLeft(1).
 			Border(lipgloss.NormalBorder())
+
+		// Bind vim-style keys
+		km := m.viewport.KeyMap
+		km.Up = key.NewBinding(key.WithKeys("k"))
+		km.Down = key.NewBinding(key.WithKeys("j"))
+		km.Left = key.NewBinding(key.WithKeys("h", "left"))
+		km.Right = key.NewBinding(key.WithKeys("l", "right"))
+		m.viewport.KeyMap = km
+
+		m.viewport.SetContent(m.commands[m.cursor].LogTail)
+		m.viewport.SetYOffset(old.YOffset)
+		m.viewport.SetHorizontalStep(3)
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	case internal.CommandStreamMsg:
 		for _, c := range m.commands {
 			if c == msg.Command {
@@ -148,27 +184,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-	return m, cmd
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
 	s := "\n🔎 Rorsch\n\n"
-
 	s += RenderTable(&m)
-
-	availableHeight := m.height - layoutOverhead(&m)
-	if availableHeight < 5 {
-		availableHeight = 5 // don't let viewport collapse
-	}
-
-	m.viewport = viewport.New(m.width-2, availableHeight)
-	m.viewport.SetContent(m.commands[m.cursor].LogTail)
-	m.viewport.Style = lipgloss.NewStyle().MarginLeft(1).Border(lipgloss.NormalBorder())
-
 	s += "\n" + m.viewport.View() + "\n"
-
 	s += RenderMenu(&m)
-
 	return s
 }
 
@@ -197,7 +221,7 @@ func configureLogging(logLevel string, configPath string) *os.File {
 	}
 
 	// Set up slog
-	logFile, err := os.OpenFile(".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile(".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
 	}
@@ -209,6 +233,6 @@ func configureLogging(logLevel string, configPath string) *os.File {
 
 	slog.Info("Starting rorsch", "version", Version)
 	slog.Debug("Using config file", "path", configPath)
-	
+
 	return logFile
 }
